@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRPC Smart Survey Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        canvas {
+            border: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            cursor: crosshair;
+        }
+
+        .dmd-table th,
+        .dmd-table td {
+            padding: 8px 4px;
+            text-align: right;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .dmd-table th {
+            background-color: #f1f5f9;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .dmd-table td {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Loading Spinner */
+        #loadingOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            @page {
+                margin: 1cm;
+                size: A4;
+            }
+
+            html,
+            body {
+                height: auto !important;
+                overflow: visible !important;
+                background: white;
+                -webkit-print-color-adjust: exact;
+            }
+
+            /* Hide UI elements */
+            .no-print,
+            button,
+            input[type="file"],
+            .shadow-md,
+            .sticky,
+            #sidebar,
+            header,
+            #editModeBadge {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block !important;
+            }
+
+            /* Reset Layout for Print */
+            .flex,
+            .flex-col,
+            .flex-1 {
+                display: block !important;
+            }
+
+            #jobListContainer,
+            aside {
+                display: none !important;
+            }
+
+            main {
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                height: auto !important;
+            }
+
+            /* Layout Adjustments */
+            .container {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+            }
+
+            .grid {
+                display: block !important;
+            }
+
+            .lg\:col-span-5,
+            .lg\:col-span-7,
+            .xl\:col-span-5,
+            .xl\:col-span-7 {
+                width: 100% !important;
+                margin-bottom: 20px;
+                page-break-inside: avoid;
+            }
+
+            /* Expand Scrollable Areas */
+            .overflow-x-auto,
+            .overflow-y-auto {
+                overflow: visible !important;
+                max-height: none !important;
+            }
+
+            /* Table Styling for Print */
+            table {
+                width: 100% !important;
+                border-collapse: collapse;
+            }
+
+            th,
+            td {
+                border: 1px solid #ddd !important;
+                padding: 4px !important;
+                font-size: 10pt !important;
+            }
+
+            /* Borders & Inputs */
+            .border-l-4 {
+                border-left-width: 0 !important;
+                border: 1px solid #ddd !important;
+            }
+
+            input,
+            select {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                font-weight: bold;
+                color: black !important;
+                -webkit-appearance: none;
+            }
+
+            /* Confidential Footer */
+            #printFooter {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                text-align: center;
+                font-size: 10px;
+                color: #666;
+                border-top: 1px solid #ccc;
+                padding-top: 5px;
+                background: white;
+            }
+
+            /* Page Break Control */
+            h2,
+            h3 {
+                page-break-after: avoid;
+            }
+
+            tr {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-slate-100 text-slate-800 flex flex-col h-screen overflow-hidden">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50 no-print flex-none">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    IRPC Survey Expert
+                    <span class="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-bold">v4.1 Report</span>
+                </h1>
+                <p class="text-sm text-blue-200">เครื่องมือคำนวณงานสำรวจพร้อมระบบรายงาน</p>
+            </div>
+            <div id="surveyorEmail" class="text-sm text-blue-300">Loading user...</div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col no-print">
+            <div class="p-4 border-b">
+                <h2 class="font-bold text-gray-700 mb-2">Job List</h2>
+                <select id="yearSelect" onchange="loadJobList()" class="w-full border rounded p-2 text-sm mb-2">
+                    <!-- Populated by JS -->
+                </select>
+                <button onclick="createNewJob()"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded flex justify-center items-center gap-2">
+                    <span>+ New Job</span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2 space-y-2" id="jobListContainer">
+                <div class="text-center text-gray-400 text-sm mt-4">Select Year to load...</div>
+            </div>
+        </aside>
+
+        <!-- Main Content (Scrollable) -->
+        <main class="flex-1 overflow-y-auto p-4 relative">
+
+            <!-- Print Header (Hidden on Screen) -->
+            <div class="hidden print-only mb-6 border-b-2 border-blue-900 pb-2">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h1 class="text-2xl font-bold text-blue-900">IRPC Survey Calculation Report</h1>
+                        <p class="text-sm text-gray-600">Civil Engineering Department</p>
+                    </div>
+                    <div class="text-right text-xs text-gray-500">
+                        <p>Printed Date: <span id="printDate"></span></p>
+                        <p>Generated by: IRPC Smart Survey Tool</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Panel: Inputs -->
+                <div class="lg:col-span-12 xl:col-span-5 space-y-4">
+
+                    <!-- Project Info -->
+                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 relative">
+                        <!-- Mode Badge -->
+                        <span id="editModeBadge"
+                            class="absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded bg-gray-200 text-gray-600">
+                            Create Mode
+                        </span>
+
+                        <h2 class="text-lg font-bold text-gray-700 mb-2">ข้อมูลโครงการ (Project Info)</h2>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Job ID</label>
+                                <input type="text" id="jobIdDisplay" disabled
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-gray-100 text-gray-500 cursor-not-allowed"
+                                    placeholder="Auto-generated">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Job Name</label>
+                                <input type="text" id="jobName"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-gray-50 focus:bg-white transition"
+                                    placeholder="ระบุชื่อโครงการ">
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex gap-2 justify-end no-print">
+                            <button id="btnSave" onclick="saveJob()"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold shadow transition">
+                                Save New
+                            </button>
+                            <button id="btnUpdate" onclick="updateJob()"
+                                class="hidden bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm font-bold shadow transition">
+                                Update
+                            </button>
+                            <button id="btnCancel" onclick="createNewJob()"
+                                class="hidden text-gray-500 hover:text-gray-700 px-3 py-2 text-sm underline">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Import & Mode Section -->
+                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-indigo-600">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-bold text-gray-700">รูปแบบข้อมูล (Auto-Detect)</label>
+
+                            <!-- CSV Upload Button -->
+                            <div class="no-print">
+                                <input type="file" id="csvInput" accept=".csv,.txt" class="hidden"
+                                    onchange="handleFileUpload(this)">
+                                <button onclick="document.getElementById('csvInput').click()"
+                                    class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    Import CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <select id="inputMode" onchange="changeMode()"
+                            class="w-full p-2 border border-gray-300 rounded-md bg-indigo-50 text-indigo-900 font-bold focus:ring-2 focus:ring-indigo-500 transition">
+                            <option value="NE">1. พิกัดมาตรฐาน (Northing, Easting)</option>
+                            <option value="GPS">2. พิกัด Google Maps (Lat, Lon)</option>
+                            <option value="DMD">3. ค่าผลต่าง DMD (Latitude, Departure)</option>
+                        </select>
+                        <div id="modeHint" class="text-xs text-gray-500 mt-2 no-print">
+                            * ใส่ค่าพิกัด N, E ที่ได้จากกล้อง Total Station หรือแบบก่อสร้าง
+                        </div>
+                        <div id="importMsg"
+                            class="hidden mt-2 p-2 bg-green-100 text-green-800 text-xs rounded border border-green-200">
+                            ✅ ตรวจพบข้อมูลแบบ <span id="detectedType" class="font-bold"></span> อัตโนมัติ
+                        </div>
+                    </div>
+
+                    <!-- Point Table -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-gray-700">ตารางข้อมูล (Survey Data)</h2>
+                            <div class="space-x-2 no-print">
+                                <button onclick="clearPoints()"
+                                    class="text-red-500 text-sm hover:underline">Reset</button>
+                                <button onclick="addPoint()"
+                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition">+
+                                    เพิ่มแถว</button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 shadow-sm">
+                                    <tr id="tableHeader">
+                                        <!-- Headers injected by JS -->
+                                    </tr>
+                                </thead>
+                                <tbody id="pointsBody">
+                                    <!-- Rows added by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Calculation Trigger -->
+                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
+                        <h2 class="text-lg font-bold text-gray-700 mb-2">กำหนดระดับ (Elevation)</h2>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700">Design Level (m)</label>
+                                <input type="number" id="targetElev" value="10.00"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                            </div>
+                            <div class="flex-none pt-6 no-print">
+                                <button onclick="processData()"
+                                    class="bg-blue-800 hover:bg-blue-900 text-white px-6 py-2 rounded-md font-bold shadow-lg transition transform hover:scale-105">
+                                    คำนวณ (Calculate)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Panel: Visualization & Results -->
+                <div class="lg:col-span-12 xl:col-span-7 space-y-4">
+
+                    <!-- Plot -->
+                    <div class="bg-white p-4 rounded-lg shadow relative">
+                        <div class="flex justify-between mb-2 items-center">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-lg font-bold text-gray-700">แผนผังรูปแปลง (2D Plot)</h2>
+                                <span id="coordinateSystemTag"
+                                    class="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">Local Grid</span>
+                            </div>
+
+                            <!-- Print Button -->
+                            <button onclick="printReport()"
+                                class="no-print bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1.5 rounded flex items-center gap-2 shadow transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                พิมพ์รายงาน
+                            </button>
+                        </div>
+                        <div
+                            class="relative w-full h-[300px] flex justify-center items-center bg-slate-50 rounded border overflow-hidden">
+                            <canvas id="surveyCanvas" width="600" height="300"></canvas>
+                            <div id="plotMsg" class="absolute text-gray-400 text-sm">รอการคำนวณ...</div>
+                        </div>
+                    </div>
+
+                    <!-- DMD Report Table -->
+                    <div id="dmdSection" class="bg-white p-4 rounded-lg shadow border-t-4 border-purple-500 hidden">
+                        <h3 class="font-bold text-purple-700 flex justify-between items-center">
+                            ตาราง DMD Analysis
+                            <button onclick="toggleDMD()"
+                                class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 no-print">ซ่อน/แสดง</button>
+                        </h3>
+                        <div id="dmdContent" class="overflow-x-auto mt-2 transition-all">
+                            <table class="w-full text-sm dmd-table">
+                                <thead>
+                                    <tr>
+                                        <th class="w-16">Point</th>
+                                        <th>Lat (Diff N)</th>
+                                        <th>Dep (Diff E)</th>
+                                        <th class="text-purple-600">DMD</th>
+                                        <th>Double Area</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dmdBody"></tbody>
+                                <tfoot class="bg-gray-50 font-bold">
+                                    <tr>
+                                        <td colspan="4" class="text-right pr-4 py-2">Total 2A:</td>
+                                        <td class="text-right pr-2 py-2 text-indigo-700" id="totalDoubleArea">0.00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Results Summary -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-indigo-500">
+                            <h3 class="font-bold text-indigo-700">พื้นที่ (Area)</h3>
+                            <div class="mt-2">
+                                <span class="font-bold text-2xl text-gray-800" id="areaSqM">0.000</span> <span
+                                    class="text-sm text-gray-500">ตร.ม.</span>
+                                <div class="mt-1 pt-2 border-t text-sm text-indigo-800 font-medium" id="areaThai">
+                                    0 ไร่ - 0 งาน - 0 ตร.วา
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-emerald-500">
+                            <h3 class="font-bold text-emerald-700">ปริมาตรดิน (Volume)</h3>
+                            <div class="mt-2">
+                                <div class="flex justify-between items-end">
+                                    <span class="text-3xl font-bold text-gray-800" id="volumeVal">0.00</span>
+                                    <span class="text-sm text-gray-500 mb-1 ml-1">ลบ.ม.</span>
+                                </div>
+                                <div id="volAction"
+                                    class="text-center font-bold text-white text-xs py-1 px-2 rounded mt-2 bg-gray-400 print:text-black print:border print:border-gray-300">
+                                    -
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confidential Footer (Print Only) -->
+            <div id="printFooter" class="hidden print-only">
+                <p class="font-bold">เอกสารลับเฉพาะ (Confidential)</p>
+                <p>เอกสารนี้เป็นทรัพย์สินและข้อมูลความลับของ บริษัท ไออาร์พีซี จำกัด (มหาชน) ห้ามมิให้ผู้ใดทำซ้ำ เผยแพร่
+                    หรือนำไปใช้โดยไม่ได้รับอนุญาต การฝ่าฝืนมีโทษตามกฎหมาย</p>
+                <p class="italic text-[9px] mt-1">This document contains proprietary information of IRPC Public Company
+                    Limited. Unauthorized reproduction or distribution is strictly prohibited.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Logic Script -->
+    <script>
+        // State
+        let currentMode = 'NE';
+        let points = [];  // Starts empty
+        let currentJobId = null; // null = Create Mode
+        let calculatedResults = {}; // To store for saving
+
+        // Init
+        function init() {
+            // Setup Year Select
+            const yearSelect = document.getElementById('yearSelect');
+            const currentYear = new Date().getFullYear();
+            for (let y = currentYear; y >= currentYear - 5; y--) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.text = y;
+                yearSelect.appendChild(opt);
+            }
+            yearSelect.value = currentYear;
+
+            // Load Job List
+            loadJobList();
+
+            // Setup empty create mode
+            createNewJob();
+        }
+
+        // --- CONFIGURATION ---
+        // REPLACE THIS URL WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
+        const API_URL = "https://script.google.com/macros/s/AKfycbw8l_Wjr7pZK5-Q7_dXGmdUXxS3b8o1KXSwNI6nyyZN6oFQ7LEhl_x1DtRMhCL6iRs/exec";
+
+        // --- API HELPER ---
+        async function callAPI(action, method = 'GET', data = null) {
+            if (API_URL.includes("AKfycbz...")) {
+                alert("Please update the API_URL in the code with your deployed Web App URL!");
+                throw new Error("API URL not configured");
+            }
+
+            let url = `${API_URL}?action=${action}`;
+            const options = {
+                method: method,
+            };
+
+            if (method === 'GET' && data) {
+                // Append params to URL
+                const query = new URLSearchParams(data).toString();
+                url += `&${query}`;
+            }
+            else if (method === 'POST') {
+                // Google Apps Script doesn't handle OPTIONS preflight for application/json well.
+                // We send as text/plain to avoid preflight, and parse in GAS.
+                options.body = JSON.stringify(data);
+                options.headers = {
+                    "Content-Type": "text/plain;charset=utf-8"
+                };
+            }
+
+            try {
+                const response = await fetch(url, options);
+                const json = await response.json();
+
+                if (json.error) {
+                    throw new Error(json.error);
+                }
+                return json;
+            } catch (error) {
+                console.error("API Error:", error);
+                throw error;
+            }
+        }
+
+        // --- Server Communication ---
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').className = show ? 'fixed inset-0 bg-white/80 flex items-center justify-center z-50' : 'hidden';
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+
+        function loadJobList() {
+            showLoading(true);
+            const year = document.getElementById('yearSelect').value;
+
+            callAPI('getJobList', 'GET', { year: year })
+                .then(renderJobList)
+                .catch(err => {
+                    console.warn("Failed to load job list:", err);
+                    document.getElementById('jobListContainer').innerHTML = '<div class="text-center text-red-400 text-sm mt-4">Failed to load jobs</div>';
+                })
+                .finally(() => showLoading(false));
+        }
+
+        function renderJobList(jobs) {
+            const container = document.getElementById('jobListContainer');
+            container.innerHTML = '';
+
+            if (!jobs || jobs.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 text-sm mt-4">No jobs found.</div>';
+            } else {
+                jobs.forEach(job => {
+                    const div = document.createElement('div');
+                    div.className = "p-2 bg-gray-50 hover:bg-blue-50 cursor-pointer border rounded shadow-sm text-sm";
+                    div.onclick = () => loadJobDetail(job.id);
+                    div.innerHTML = `
+                        <div class="font-bold text-gray-700 truncate">${job.name || '(No Name)'}</div>
+                        <div class="text-xs text-gray-500 flex justify-between">
+                            <span>${job.updated}</span>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+        }
+
+        function loadJobDetail(id) {
+            showLoading(true);
+
+            callAPI('loadJobDetail', 'GET', { jobId: id })
+                .then(populateJobIntoUI)
+                .catch(onFailure);
+        }
+
+        function populateJobIntoUI(job) {
+            try {
+                currentJobId = job.jobId;
+                document.getElementById('jobIdDisplay').value = job.jobId;
+                document.getElementById('jobName').value = job.jobName;
+
+                // Mode
+                // Ensure mode is valid or default to NE
+                const validModes = ['NE', 'GPS', 'DMD'];
+                currentMode = validModes.includes(job.mode) ? job.mode : 'NE';
+                document.getElementById('inputMode').value = currentMode;
+                changeMode(); // Update headers
+
+                // Pts
+                // Ensure points is an array
+                points = Array.isArray(job.points) ? job.points : [];
+
+                // Elev
+                document.getElementById('targetElev').value = job.targetElev || 10.00;
+
+                // Render
+                renderTable();
+
+                // Only calculate if enough points, to avoid alerts on load
+                if (points.length >= 3 || (currentMode === 'DMD' && points.length >= 1)) {
+                    processData(true); // new flag for silent mode if needed, but length check helps
+                } else {
+                    // Clear canvas if not enough points
+                    const ctx = document.getElementById('surveyCanvas').getContext('2d');
+                    ctx.clearRect(0, 0, 600, 300);
+                    document.getElementById('plotMsg').style.display = 'block';
+                    document.getElementById('areaSqM').innerText = "0.000";
+                    document.getElementById('volumeVal').innerText = "0.00";
+                }
+
+                // UI State
+                setEditMode(true);
+
+            } catch (e) {
+                console.error("Error populating job:", e);
+                alert("Error loading job details: " + e.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function createNewJob() {
+            currentJobId = null;
+            document.getElementById('jobIdDisplay').value = '';
+            document.getElementById('jobName').value = '';
+            document.getElementById('inputMode').value = 'NE';
+            currentMode = 'NE';
+            changeMode();
+            points = [
+                { v1: 1000.000, v2: 1000.000, z: 10.00 },
+                { v1: 1040.000, v2: 1000.000, z: 10.00 },
+                { v1: 1040.000, v2: 1030.000, z: 10.00 },
+                { v1: 1000.000, v2: 1030.000, z: 10.00 }
+            ];
+            renderTable();
+            document.getElementById('surveyCanvas').getContext('2d').clearRect(0, 0, 600, 300);
+            document.getElementById('plotMsg').style.display = 'block';
+            document.getElementById('dmdSection').classList.add('hidden');
+
+            // Clear Results
+            document.getElementById('areaSqM').innerText = "0.000";
+            document.getElementById('volumeVal').innerText = "0.00";
+
+            setEditMode(false);
+        }
+
+        function saveJob() {
+            if (!document.getElementById('jobName').value) {
+                alert("Please enter a Job Name");
+                return;
+            }
+
+            // Ensure calculation is fresh
+            processData();
+
+            const data = {
+                jobName: document.getElementById('jobName').value,
+                mode: currentMode,
+                targetElev: document.getElementById('targetElev').value,
+                points: points,
+                results: calculatedResults // Set by processData
+            };
+
+            showLoading(true);
+
+            callAPI('saveNewJob', 'POST', data)
+                .then((res) => {
+                    alert(`✅ บันทึกข้อมูลสำเร็จ (Saved Successfully)\n\nรหัสงาน (Job ID): ${res.jobId}\nชื่อโครงการ: ${data.jobName}`);
+                    loadJobList(); // Refresh sidebar
+                    loadJobDetail(res.jobId); // Reload to get ID and switch to edit mode
+                })
+                .catch(onFailure)
+                .finally(() => showLoading(false));
+        }
+
+        function updateJob() {
+            if (!currentJobId) return;
+
+            processData();
+
+            const data = {
+                jobId: currentJobId,
+                jobName: document.getElementById('jobName').value,
+                mode: currentMode,
+                targetElev: document.getElementById('targetElev').value,
+                points: points,
+                results: calculatedResults
+            };
+
+            showLoading(true);
+
+            callAPI('updateJob', 'POST', data)
+                .then((res) => {
+                    alert(`✅ อัปเดตข้อมูลเรียบร้อย (Update Complete)\n\nJob ID: ${currentJobId}`);
+                    loadJobList(); // Refresh sidebar to show updated date
+                })
+                .catch(onFailure)
+                .finally(() => showLoading(false));
+        }
+
+        function onFailure(error) {
+            showLoading(false);
+            alert("Error: " + error.message);
+        }
+
+        function setEditMode(isEdit) {
+            const badge = document.getElementById('editModeBadge');
+            const btnSave = document.getElementById('btnSave');
+            const btnUpdate = document.getElementById('btnUpdate');
+            const btnCancel = document.getElementById('btnCancel');
+
+            if (isEdit) {
+                badge.innerText = "Edit Mode";
+                badge.className = "absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded bg-orange-100 text-orange-600 border border-orange-200";
+                btnSave.classList.add('hidden');
+                btnUpdate.classList.remove('hidden');
+                btnCancel.classList.remove('hidden');
+            } else {
+                badge.innerText = "Create Mode";
+                badge.className = "absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded bg-green-100 text-green-600 border border-green-200";
+                btnSave.classList.remove('hidden');
+                btnUpdate.classList.add('hidden');
+                btnCancel.classList.add('hidden');
+            }
+        }
+
+        // --- Existing Logic (Refactored slightly) ---
+
+        function printReport() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            document.getElementById('printDate').innerText = dateStr;
+            window.print();
+        }
+
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) { processCSV(e.target.result); input.value = ''; };
+            reader.readAsText(file);
+        }
+
+        function processCSV(csvText) {
+            const lines = csvText.split(/\r\n|\n/);
+            const allRows = [];
+
+            // 1. Setup & First Pass: Parse valid number rows
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                const cols = line.split(/[,\t]+/).filter(c => c.trim() !== '');
+
+                // Skip headers (if first char is letter)
+                if (cols.length > 0 && /[a-zA-Z]/.test(cols[0])) continue;
+
+                // Parse numbers
+                const vals = cols.map(parseFloat).filter(n => !isNaN(n));
+
+                // We need at least 2 coordinate numbers + optional ID
+                if (vals.length >= 2) {
+                    allRows.push(vals);
+                }
+            }
+
+            if (allRows.length === 0) {
+                alert("ไม่พบข้อมูลตัวเลขที่ถูกต้อง (No valid numeric data found)");
+                return;
+            }
+
+            // 2. Heuristic: Check if Column 0 is a Point ID
+            // Logic: If there are >= 3 columns AND Col 0 contains small sequential-ish integers, treat it as ID.
+            let hasIdColumn = false;
+
+            if (allRows.length > 0 && allRows[0].length >= 3) {
+                // Check first few rows
+                const sampleSize = Math.min(allRows.length, 5);
+                let isIntegerCol0 = true;
+                let isSmallCol0 = true; // IDs are usually small integers < 1,000,000 usually
+
+                for (let j = 0; j < sampleSize; j++) {
+                    const val0 = allRows[j][0];
+                    if (!Number.isInteger(val0)) isIntegerCol0 = false;
+                    if (val0 > 1000000) isSmallCol0 = false;
+                }
+
+                // If patterns match, assume it's P, N, E, [Z]
+                if (isIntegerCol0 && isSmallCol0) {
+                    hasIdColumn = true;
+                }
+            }
+
+            // 3. Map to Data Structure
+            points = allRows.map(row => {
+                let n, e, z;
+
+                if (hasIdColumn) {
+                    // Format: [ID], N, E, [Z]...
+                    n = row[1];
+                    e = row[2];
+                    z = row.length >= 4 ? row[3] : 0;
+                } else {
+                    // Format: N, E, [Z]
+                    n = row[0];
+                    e = row[1];
+                    z = row.length >= 3 ? row[2] : 0;
+                }
+
+                return { v1: n, v2: e, z: z };
+            });
+
+            // 4. Update UI
+            if (points.length > 0) {
+                autoDetectMode(points);
+                renderTable();
+
+                const msg = document.getElementById('importMsg');
+                if (msg) {
+                    msg.innerHTML = hasIdColumn
+                        ? `✅ Import Success (Skipped Column 1 as Point ID)`
+                        : `✅ Import Success`;
+                    msg.classList.remove('hidden');
+                    setTimeout(() => msg.classList.add('hidden'), 5000);
+                }
+            }
+        }
+
+        function autoDetectMode(data) {
+            let sumV1 = 0, sumV2 = 0, maxV = -Infinity;
+            let hasNegative = false;
+            data.forEach(p => {
+                sumV1 += p.v1; sumV2 += p.v2;
+                if (p.v1 < 0 || p.v2 < 0) hasNegative = true;
+                maxV = Math.max(maxV, Math.abs(p.v1), Math.abs(p.v2));
+            });
+            const avgV1 = sumV1 / data.length;
+            const avgV2 = sumV2 / data.length;
+
+            let detected = 'NE';
+            let label = "Local/UTM Coordinates";
+
+            if (avgV1 > 5 && avgV1 < 21 && avgV2 > 97 && avgV2 < 106) {
+                detected = 'GPS'; label = "GPS (Lat/Lon)";
+            } else if (avgV1 > 10000 || avgV2 > 10000) {
+                detected = 'NE'; label = "UTM Coordinates";
+            } else if (hasNegative || (maxV < 500 && detected !== 'GPS')) {
+                if (hasNegative) { detected = 'DMD'; label = "DMD (Lat/Dep)"; }
+                else { detected = 'NE'; label = "Local Grid (NE)"; }
+            }
+
+            document.getElementById('inputMode').value = detected;
+            document.getElementById('detectedType').innerText = label;
+            changeMode();
+        }
+
+        function changeMode() {
+            currentMode = document.getElementById('inputMode').value;
+            const hint = document.getElementById('modeHint');
+            const header = document.getElementById('tableHeader');
+
+            if (currentMode === 'NE') {
+                hint.innerText = "* ใส่ค่าพิกัด N (North) และ E (East) เป็นหน่วยเมตร";
+                header.innerHTML = `<th class="px-2 py-2 text-center w-10">#</th><th class="px-2 py-2 text-center">North (Y)</th><th class="px-2 py-2 text-center">East (X)</th><th class="px-2 py-2 text-center">Elev (Z)</th><th class="px-2 py-2 w-8 no-print"></th>`;
+            } else if (currentMode === 'GPS') {
+                hint.innerText = "* ใส่ค่าพิกัดจาก Google Maps (ทศนิยม) เช่น 12.6843, 101.2345";
+                header.innerHTML = `<th class="px-2 py-2 text-center w-10">#</th><th class="px-2 py-2 text-center bg-blue-50 text-blue-900">Latitude (Lat)</th><th class="px-2 py-2 text-center bg-blue-50 text-blue-900">Longitude (Lon)</th><th class="px-2 py-2 text-center">Elev (Z)</th><th class="px-2 py-2 w-8 no-print"></th>`;
+            } else if (currentMode === 'DMD') {
+                hint.innerText = "* ใส่ค่าผลต่างจากจุดก่อนหน้า (Latitude = Diff N, Departure = Diff E)";
+                header.innerHTML = `<th class="px-2 py-2 text-center w-10">Line</th><th class="px-2 py-2 text-center bg-purple-50 text-purple-900">Latitude (+N/-S)</th><th class="px-2 py-2 text-center bg-purple-50 text-purple-900">Departure (+E/-W)</th><th class="px-2 py-2 text-center">Elev (Z)</th><th class="px-2 py-2 w-8 no-print"></th>`;
+            }
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('pointsBody');
+            tbody.innerHTML = '';
+            points.forEach((p, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "bg-white border-b hover:bg-gray-50";
+
+                let label = index + 1;
+                if (currentMode === 'DMD') label = `${index + 1}-${(index + 1) % points.length + 1}`;
+
+                tr.innerHTML = `
+                    <td class="px-2 py-2 font-medium text-gray-900 text-center">${label}</td>
+                    <td class="px-2 py-2"><input type="number" step="0.000001" value="${p.v1}" onchange="updatePoint(${index}, 'v1', this.value)" class="w-full border rounded px-1 text-right focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                    <td class="px-2 py-2"><input type="number" step="0.000001" value="${p.v2}" onchange="updatePoint(${index}, 'v2', this.value)" class="w-full border rounded px-1 text-right focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                    <td class="px-2 py-2"><input type="number" step="0.01" value="${p.z}" onchange="updatePoint(${index}, 'z', this.value)" class="w-full border rounded px-1 text-right focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                    <td class="px-2 py-2 text-center no-print"><button onclick="removePoint(${index})" class="text-red-400 hover:text-red-700">×</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addPoint() {
+            let last = points.length > 0 ? points[points.length - 1] : { v1: 0, v2: 0, z: 0 };
+            points.push({ v1: last.v1, v2: last.v2, z: last.z });
+            renderTable();
+        }
+        function removePoint(idx) {
+            points.splice(idx, 1);
+            renderTable();
+        }
+        function updatePoint(idx, field, val) {
+            points[idx][field] = parseFloat(val);
+        }
+        function clearPoints() {
+            if (confirm("ล้างข้อมูล?")) { points = []; renderTable(); }
+        }
+        function toggleDMD() {
+            document.getElementById('dmdContent').parentElement.classList.toggle('hidden');
+        }
+
+        function processData() {
+            if (points.length < 3 && currentMode !== 'DMD') {
+                alert("ต้องการอย่างน้อย 3 จุด");
+                return;
+            }
+
+            let calcPoints = [];
+
+            if (currentMode === 'NE') {
+                document.getElementById('coordinateSystemTag').innerText = "Local/UTM Grid";
+                calcPoints = points.map(p => ({ n: p.v1, e: p.v2, z: p.z }));
+
+            } else if (currentMode === 'GPS') {
+                document.getElementById('coordinateSystemTag').innerText = "Converted from WGS84";
+                const refLat = points[0].v1;
+                const refLon = points[0].v2;
+                const refN = 1400000;
+                const refE = 700000;
+
+                calcPoints = points.map(p => {
+                    const dLat = p.v1 - refLat;
+                    const dLon = p.v2 - refLon;
+                    const metersPerDegLat = 110574;
+                    const metersPerDegLon = 111320 * Math.cos(refLat * Math.PI / 180);
+                    return { n: refN + (dLat * metersPerDegLat), e: refE + (dLon * metersPerDegLon), z: p.z };
+                });
+
+            } else if (currentMode === 'DMD') {
+                document.getElementById('coordinateSystemTag').innerText = "Relative Grid";
+                let currN = 1000, currE = 1000;
+                calcPoints.push({ n: currN, e: currE, z: points[0].z });
+                for (let i = 0; i < points.length; i++) {
+                    currN += points[i].v1;
+                    currE += points[i].v2;
+                    calcPoints.push({ n: currN, e: currE, z: points[i].z });
+                }
+            }
+            runDMDAnalysis(calcPoints);
+            // Store results in global state for saving
+            calculatedResults = {
+                calctype: currentMode,
+                timestamp: new Date().toISOString()
+            };
+        }
+
+        function runDMDAnalysis(calcPoints) {
+            // Shoelace / DMD
+            const n = calcPoints.length;
+            let processList = [...calcPoints];
+
+            // For DMD mode logic adjustment
+            if (currentMode === 'DMD' && n > 1) {
+                const pFirst = processList[0];
+                const pLast = processList[processList.length - 1];
+                if (Math.abs(pFirst.n - pLast.n) < 0.01 && Math.abs(pFirst.e - pLast.e) < 0.01) {
+                    processList.pop(); // Remove duplicate closing point
+                }
+            }
+
+            const numV = processList.length;
+            const dmdBody = document.getElementById('dmdBody');
+            dmdBody.innerHTML = '';
+
+            let doubleAreaSum = 0;
+            let currentDMD = 0;
+
+            for (let i = 0; i < numV; i++) {
+                let pStart = processList[i];
+                let pEnd = processList[(i + 1) % numV];
+                let lat = pEnd.n - pStart.n;
+                let dep = pEnd.e - pStart.e;
+                let dmd;
+
+                if (i === 0) dmd = dep;
+                else {
+                    let pPrev = processList[(i - 1 + numV) % numV];
+                    let depPrev = pStart.e - pPrev.e;
+                    dmd = currentDMD + depPrev + dep;
+                }
+                currentDMD = dmd;
+
+                let doubleArea = dmd * lat;
+                doubleAreaSum += doubleArea;
+
+                const tr = document.createElement('tr');
+                tr.className = i % 2 == 0 ? "bg-white" : "bg-gray-50";
+                tr.innerHTML = `
+                    <td class="text-center text-gray-500">${i + 1}-${(i + 1) % numV + 1}</td>
+                    <td class="pr-2">${lat.toFixed(3)}</td>
+                    <td class="pr-2">${dep.toFixed(3)}</td>
+                    <td class="text-purple-700 bg-purple-50 pr-2 font-semibold">${dmd.toFixed(3)}</td>
+                    <td class="pr-2">${doubleArea.toFixed(3)}</td>
+                `;
+                dmdBody.appendChild(tr);
+            }
+
+            document.getElementById('dmdSection').classList.remove('hidden');
+            document.getElementById('totalDoubleArea').innerText = doubleAreaSum.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+            const area = Math.abs(doubleAreaSum) / 2.0;
+            updateDisplay(area, processList);
+
+            // Add to results
+            calculatedResults.area = area;
+        }
+
+        function updateDisplay(area, plotData) {
+            const rai = Math.floor(area / 1600);
+            const ngan = Math.floor((area % 1600) / 400);
+            const wah = ((area % 1600) % 400) / 4;
+
+            document.getElementById('areaSqM').innerText = area.toLocaleString('en-US', { maximumFractionDigits: 3 });
+            document.getElementById('areaThai').innerText = `${rai} ไร่ - ${ngan} งาน - ${wah.toFixed(1)} ตร.วา`;
+
+            let sumZ = 0;
+            plotData.forEach(p => sumZ += p.z);
+            let avgZ = sumZ / plotData.length;
+            const targetZ = parseFloat(document.getElementById('targetElev').value) || 0;
+            const diffZ = targetZ - avgZ;
+            const volume = area * Math.abs(diffZ);
+
+            document.getElementById('volumeVal').innerText = volume.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            const vAction = document.getElementById('volAction');
+
+            if (diffZ > 0) {
+                vAction.innerText = `ต้องถม (FILL) สูงเฉลี่ย ${diffZ.toFixed(2)}m`;
+                vAction.className = "text-center font-bold text-white text-xs py-1 px-2 rounded mt-2 bg-red-500 print:bg-transparent print:text-black print:border print:border-red-500";
+            } else if (diffZ < 0) {
+                vAction.innerText = `ต้องขุด (CUT) ลึกเฉลี่ย ${Math.abs(diffZ).toFixed(2)}m`;
+                vAction.className = "text-center font-bold text-white text-xs py-1 px-2 rounded mt-2 bg-emerald-600 print:bg-transparent print:text-black print:border print:border-emerald-600";
+            } else {
+                vAction.innerText = "ระดับเท่ากัน (On Grade)";
+                vAction.className = "bg-gray-500 text-white px-2 py-1 rounded text-xs mt-2 text-center";
+            }
+
+            // Add to results
+            calculatedResults.volume = volume;
+            calculatedResults.avgElev = avgZ;
+            calculatedResults.targetElev = targetZ;
+
+            drawCanvas(plotData);
+        }
+
+        function drawCanvas(points) {
+            const canvas = document.getElementById('surveyCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            const pad = 40;
+
+            ctx.clearRect(0, 0, w, h);
+            document.getElementById('plotMsg').style.display = 'none';
+
+            const ns = points.map(p => p.n);
+            const es = points.map(p => p.e);
+            const minN = Math.min(...ns), maxN = Math.max(...ns);
+            const minE = Math.min(...es), maxE = Math.max(...es);
+
+            const rN = maxN - minN || 1;
+            const rE = maxE - minE || 1;
+            const scale = Math.min((h - pad * 2) / rN, (w - pad * 2) / rE);
+
+            const plotH = rN * scale;
+            const plotW = rE * scale;
+            const offX = (w - plotW) / 2;
+            const offY = (h - plotH) / 2;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#2563eb';
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.1)';
+            ctx.lineWidth = 2;
+
+            points.forEach((p, i) => {
+                const x = (p.e - minE) * scale + offX;
+                const y = h - ((p.n - minN) * scale + offY);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = 'red';
+            ctx.font = '12px sans-serif';
+            points.forEach((p, i) => {
+                const x = (p.e - minE) * scale + offX;
+                const y = h - ((p.n - minN) * scale + offY);
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.fillText(i + 1, x + 6, y - 6);
+                ctx.fillStyle = 'red';
+            });
+        }
+
+        // Initialize App
+        init();
+
+    </script>
+</body>
+
+</html>

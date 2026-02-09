@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="public/App-logo-mini.png">
+    <title>Smart App Portal</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Roboto+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <!-- Icon Set -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local Global CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <img src="public/App-logo-full.png" alt="EN_SmartApp Logo" class="logo-desktop" style="height: 80px;">
+                <img src="public/App-logo-mini.png" alt="EN_SmartApp Logo" class="logo-mobile" style="height: 50px;">
+                <!-- <i class="fa-solid fa-layer-group"></i> -->
+            </div>
+
+            <!-- User Profile Area -->
+            <div style="display: flex; align-items: center;">
+                <!-- Language Switcher -->
+                <div class="lang-switcher">
+                    <button class="lang-btn" onclick="switchLanguage('th')" title="Thai">
+                        <img src="https://flagcdn.com/w40/th.png" alt="TH">
+                    </button>
+                    <button class="lang-btn active" onclick="switchLanguage('en')" title="English">
+                        <img src="https://flagcdn.com/w40/gb.png" alt="EN">
+                    </button>
+                </div>
+
+                <div class="user-profile-area">
+                    <div class="user-badge">
+                        <div class="user-name" style="font-weight: 600; font-size: 1rem; color: var(--color-accent);">
+                            Loading...</div>
+                        <div class="user-role mono" style="font-size: 0.8rem; color: var(--color-text-muted);">Please
+                            wait</div>
+                    </div>
+                    <img src="" alt="User" class="user-avatar user-avatar-large">
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <h2 class="text-accent" data-i18n="hero_title">Engineering Workspace</h2>
+            <p data-i18n="hero_desc">Select a module below to begin your calculation workflow.</p>
+        </section>
+
+        <!-- Application Grid -->
+        <main class="app-grid">
+
+            <!-- App Card 1: Civil Land Calculator -->
+            <article class="app-card">
+                <div class="status-badge active">v2.0 - Active</div>
+                <div class="card-content">
+                    <i class="fa-solid fa-map-location-dot card-icon"></i>
+                    <h3 class="card-title" data-i18n="app_land_title">Land Area Calculator</h3>
+                    <p class="card-desc" data-i18n="app_land_desc">Calculate total land area from survey boundary
+                        points. Supports GeoJSON export.
+                    </p>
+                </div>
+                <div class="card-action">
+                    <a href="apps/civil-land/index.html" class="btn btn-primary" style="width: 100%;">
+                        <i class="fa-solid fa-play" style="margin-right: 8px;"></i> <span data-i18n="app_launch">Launch
+                            Module</span>
+                    </a>
+                </div>
+            </article>
+
+            <!-- App Card 2: Pipe Rack (Placeholder) -->
+            <article class="app-card" style="opacity: 0.7;">
+                <div class="status-badge beta">In Development</div>
+                <div class="card-content">
+                    <i class="fa-solid fa-industry card-icon"></i>
+                    <h3 class="card-title" data-i18n="app_piperack_title">Pipe Rack Loads</h3>
+                    <p class="card-desc" data-i18n="app_piperack_desc">Mechanical structural analysis for standard pipe
+                        racks. Load distribution
+                        calculator.</p>
+                </div>
+                <div class="card-action">
+                    <button class="btn btn-primary" style="width: 100%; cursor: not-allowed; opacity: 0.5;" disabled>
+                        <i class="fa-solid fa-lock" style="margin-right: 8px;"></i> <span
+                            data-i18n="app_coming_soon">Coming Soon</span>
+                    </button>
+                </div>
+            </article>
+
+            <!-- App Card 3: Unit Converter (Built-in Utility) -->
+            <article class="app-card">
+                <div class="status-badge active">Utility</div>
+                <div class="card-content">
+                    <i class="fa-solid fa-calculator card-icon"></i>
+                    <h3 class="card-title" data-i18n="app_utils_title">Quick Utils</h3>
+                    <p class="card-desc" data-i18n="app_utils_desc">Standard engineering unit conversions (Pressure,
+                        Temperature, Length) and
+                        constants.</p>
+                </div>
+                <div class="card-action">
+                    <a href="#" class="btn btn-primary" onclick="alert('Utility Modal coming soon!')"
+                        style="width: 100%;">
+                        <i class="fa-solid fa-toolbox" style="margin-right: 8px;"></i> <span
+                            data-i18n="app_open_tools">Open Tools</span>
+                    </a>
+                </div>
+            </article>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p class="mono">SYSTEM STATUS: ONLINE | DATABASE: CONNECTED (MOCK)</p>
+            <p style="margin-top: 0.5rem; opacity: 0.5;">&copy; 2026 Engineering Portal. Managed by Google Antigravity.
+            </p>
+        </footer>
+    </div>
+
+    <!-- Global Logic -->
+    <script src="script.js"></script>
+</body>
+
+</html>
