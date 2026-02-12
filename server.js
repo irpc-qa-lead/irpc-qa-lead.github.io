@@ -20,30 +20,49 @@ app.use((req, res, next) => {
 app.use(express.static(__dirname));
 
 /**
- * 1. API: Get Current Windows User
+ * Helper: Get Current User Info (Cross-Platform)
+ */
+const getUserInfo = (callback) => {
+    const isWindows = process.platform === "win32";
+    const username = process.env.USERNAME || process.env.USER || "Unknown User";
+    const domain = process.env.USERDOMAIN || "Local";
+
+    if (isWindows) {
+        // Windows: PowerShell command to get Full Name
+        const psCommand = `powershell -Command "([adsi]'WinNT://${domain}/${username},user').FullName"`;
+        exec(psCommand, (error, stdout, stderr) => {
+            let fullName = stdout.trim();
+            if (!fullName || error) {
+                console.warn("Could not retrieve full name via PowerShell:", error);
+                fullName = username;
+            }
+            callback({
+                username,
+                fullName,
+                domain,
+                source: "Windows Environment",
+                avatar: "http://localhost:3000/public/DrX.jpeg"
+            });
+        });
+    } else {
+        // Linux/macOS: Just use the username or simple command if needed
+        // For now, simpliest approach:
+        callback({
+            username,
+            fullName: username, // tough to get full name reliably without specific tools like `getent`
+            domain,
+            source: "Linux/Unix Environment",
+            avatar: "http://localhost:3000/public/DrX.jpeg"
+        });
+    }
+};
+
+/**
+ * 1. API: Get Current User
  */
 app.get('/api/user', (req, res) => {
-    const username = process.env.USERNAME;
-    const domain = process.env.USERDOMAIN;
-
-    // PowerShell command to get Full Name
-    const psCommand = `powershell -Command "([adsi]'WinNT://${domain}/${username},user').FullName"`;
-
-    exec(psCommand, (error, stdout, stderr) => {
-        let fullName = stdout.trim();
-
-        // Fallback if PowerShell fails or returns empty
-        if (!fullName || error) {
-            console.warn("Could not retrieve full name via PowerShell:", error);
-            fullName = username; // Just use the login name
-        }
-
-        res.json({
-            username: username,
-            fullName: fullName,
-            domain: domain,
-            source: "Local Windows Environment"
-        });
+    getUserInfo((userInfo) => {
+        res.json(userInfo);
     });
 });
 
@@ -56,9 +75,11 @@ app.get('/', (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
+    const user = process.env.USERNAME || process.env.USER || "Unknown";
     console.log(`\n---------------------------------------------------`);
     console.log(` EN_SmartApp Local Server Running`);
     console.log(` - URL: http://localhost:${PORT}`);
-    console.log(` - User: ${process.env.USERNAME}`);
+    console.log(` - User: ${user}`);
+    console.log(` - Platform: ${process.platform}`);
     console.log(`---------------------------------------------------\n`);
 });

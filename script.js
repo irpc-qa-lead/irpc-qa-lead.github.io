@@ -228,7 +228,7 @@ function updateLanguageUI() {
 
 async function initIdentity() {
     // Optimization: Check Cache First
-    const CACHE_KEY = 'EN_SmartApp_UserProfile';
+    const CACHE_KEY = 'EN_SmartApp_UserProfile_v5';
     const CACHE_EXPIRY = 60 * 60 * 1000; // 1 Hour
 
     try {
@@ -257,6 +257,11 @@ async function initIdentity() {
             localUserData = await localRes.json();
             userId = localUserData.username; // Use Windows Login ID
             console.log(`[Identity] Detected Windows User: ${userId} (${localUserData.fullName})`);
+
+            // If local avatar is provided, use it
+            if (localUserData.avatar) {
+                console.log(`[Identity] Using Local Avatar: ${localUserData.avatar}`);
+            }
         }
     } catch (e) {
         // Not running on local server, continue...
@@ -295,6 +300,10 @@ async function initIdentity() {
             if (localUserData && localUserData.fullName) {
                 STATE.user.name = localUserData.fullName;
             }
+            // Force Local Avatar if available (Override GAS)
+            if (localUserData && localUserData.avatar) {
+                STATE.user.avatar = localUserData.avatar;
+            }
 
             console.log(`[Identity] Welcome, ${STATE.user.name}`);
         } else {
@@ -305,7 +314,7 @@ async function initIdentity() {
                 id: userId,
                 name: localUserData ? localUserData.fullName : `User ${userId}`,
                 role: "Engineer (Unregistered)",
-                avatar: `https://ui-avatars.com/api/?name=${userId}&background=2D3748&color=fff`
+                avatar: (localUserData && localUserData.avatar) ? localUserData.avatar : `https://ui-avatars.com/api/?name=${userId}&background=2D3748&color=fff`
             };
         }
 
@@ -319,7 +328,7 @@ async function initIdentity() {
                 id: userId,
                 name: localUserData.fullName,
                 role: "Engineer (Local)",
-                avatar: `https://ui-avatars.com/api/?name=${localUserData.fullName}&background=2D3748&color=fff`
+                avatar: localUserData.avatar || `https://ui-avatars.com/api/?name=${localUserData.fullName}&background=2D3748&color=fff`
             };
             console.log(`[Identity] Using Local Profile: ${STATE.user.name}`);
         } else {
