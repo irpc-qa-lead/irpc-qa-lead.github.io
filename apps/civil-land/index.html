@@ -122,6 +122,7 @@
                 background: white !important;
                 color: black !important;
                 -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             /* Hide Portal Header & UI elements */
@@ -227,6 +228,39 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="hidden">
         <div class="spinner"></div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm no-print print:hidden">
+        <div
+            class="bg-white rounded-lg shadow-2xl p-6 max-w-sm w-full mx-4 transform transition-all scale-100 border-t-4 border-green-500">
+            <div class="flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-check text-3xl text-green-600"></i>
+                </div>
+                <h3 id="modalTitle" class="text-xl font-bold text-gray-800 mb-2">Save Successful</h3>
+                <p id="modalMessage" class="text-gray-600 mb-6 text-sm">
+                    Your data has been securely saved to the database.
+                </p>
+                <div class="bg-gray-50 rounded p-3 w-full mb-6 border border-gray-200 text-left">
+                    <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Job Details</p>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-gray-600 text-sm">Job ID:</span>
+                        <span id="modalJobId" class="font-mono font-bold text-blue-600 text-sm">JOB-XXXX</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600 text-sm">Name:</span>
+                        <span id="modalJobName" class="font-medium text-gray-800 text-sm truncate max-w-[150px]">Project
+                            Name</span>
+                    </div>
+                </div>
+                <button onclick="closeSuccessModal()"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-200 shadow-md">
+                    OK
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Portal Header (Fixed/Sticky) -->
@@ -528,6 +562,74 @@
                 </div>
             </div>
 
+            <!-- Appendix Report Page -->
+            <div class="hidden print-only text-gray-900 text-sm font-sans" style="page-break-before: always;">
+                <div class="mb-6 border-b-2 border-gray-800 pb-3">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-1">เอกสารแนบ 1</h2>
+                    <h3 class="text-lg text-gray-600 font-semibold">วิธีการคำนวณทางเทคนิค (Technical Calculation
+                        Methods)</h3>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Coordinate Method -->
+                    <div class="border-l-4 border-blue-600 pl-4 py-1">
+                        <h3 class="font-bold text-base mb-1 text-blue-900">วิธีพิกัดฉาก (Coordinate Method)</h3>
+                        <p class="mb-1 text-sm">วิธีที่แม่นยำที่สุดสำหรับวงรอบปิด มีขั้นตอนดังนี้:</p>
+                        <ol class="list-decimal pl-5 mb-2 space-y-0.5 text-sm text-gray-800">
+                            <li>เรียงค่าพิกัด (N, E) วนตามเข็มหรือทวนเข็มนาฬิกา (โดยให้จุดแรกปิดท้ายรายการ)</li>
+                            <li>คูณไขว้ลงเป็นบวก (+) และคูณไขว้ขึ้นเป็นลบ (-)</li>
+                            <li>รวมผลลัพธ์หาค่าสัมบูรณ์แล้วหารด้วย 2</li>
+                        </ol>
+                        <div class="bg-blue-50 p-2 border border-blue-100 rounded-lg text-center mx-4">
+                            <div class="font-mono text-base font-bold text-blue-800 mb-0.5">Area = ½ × |
+                                ∑(N<sub>i</sub>E<sub>i+1</sub> - E<sub>i</sub>N<sub>i+1</sub>) |</div>
+                            <div class="text-xs text-gray-500">(ผลรวมคูณลง) - (ผลรวมคูณขึ้น)</div>
+                        </div>
+                    </div>
+
+                    <!-- DMD Method -->
+                    <div class="border-l-4 border-purple-600 pl-4 py-1">
+                        <h3 class="font-bold text-base mb-1 text-purple-900">วิธี DMD (Double Meridian Distance)</h3>
+                        <p class="mb-1 text-sm">ใช้ค่า Latitude และ Departure ที่ปรับแก้แล้ว กฎการหาค่า:</p>
+                        <ul class="list-disc pl-5 mb-2 space-y-0.5 text-sm text-gray-800">
+                            <li>DMD แรก = Departure ของเส้นแรก</li>
+                            <li>DMD ถัดไป = DMDก่อน + Depก่อน + Depปัจจุบัน</li>
+                            <li>DMD ท้าย = -(Departure ของเส้นสุดท้าย) (ใช้ตรวจสอบ)</li>
+                        </ul>
+                        <div class="bg-purple-50 p-2 border border-purple-100 rounded-lg text-center mx-4">
+                            <div class="font-mono text-base font-bold text-purple-800 mb-0.5">Area = ½ × ∑(DMD ×
+                                Latitude)</div>
+                            <div class="text-xs text-gray-500">ใช้ค่าสัมบูรณ์ของผลลัพธ์สุดท้าย</div>
+                        </div>
+                    </div>
+
+                    <!-- Simpson's Rule -->
+                    <div class="border-l-4 border-emerald-600 pl-4 py-1">
+                        <h3 class="font-bold text-base mb-1 text-emerald-900">กฎของซิมป์สัน (Simpson’s 1/3 Rule)</h3>
+                        <div class="flex flex-col md:flex-row gap-4 items-center">
+                            <div class="flex-1">
+                                <p class="mb-1 text-sm">สำหรับพื้นที่ขอบเขตโค้งเว้า โดยแบ่งพื้นที่ออกเป็นช่วงย่อยเท่ากัน
+                                    (h) จำนวนช่วงต้องเป็นเลขคู่</p>
+                                <ul class="list-disc pl-5 text-gray-600 text-xs">
+                                    <li>h = ความกว้างของช่วงย่อย</li>
+                                    <li>y = ความยาวเส้น offset</li>
+                                </ul>
+                            </div>
+                            <div
+                                class="flex-1 w-full bg-emerald-50 p-3 border border-emerald-100 rounded-lg text-center">
+                                <div class="font-mono text-base font-bold text-emerald-800">Area = (h/3) ×
+                                    [y<sub>0</sub> + y<sub>n</sub> + 4(∑Odd) + 2(∑Even)]</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="mt-8 text-xs text-gray-500 text-center italic border-t pt-2">
+                    * ข้อมูลอ้างอิงตามหลักวิชาการสำรวจ (Engineering Surveying Principles)
+                    เพื่อประกอบการตรวจสอบความถูกต้อง
+                </p>
+            </div>
+
             <!-- Confidential Footer (Print Only) -->
             <div id="printFooter" class="hidden print-only">
                 <p class="font-bold">เอกสารลับเฉพาะ (Confidential)</p>
@@ -714,6 +816,49 @@
             setEditMode(false);
         }
 
+
+        function showSuccessModal(titleKey, messageKey, jobDetails) {
+            const modal = document.getElementById('successModal');
+            const titleEl = document.getElementById('modalTitle');
+            const msgEl = document.getElementById('modalMessage');
+
+            // Translations
+            const i18n = {
+                en: {
+                    success_title: "Save Successful",
+                    update_title: "Update Successful",
+                    success_msg: "Data has been successfully saved to the system.",
+                    update_msg: "Existing record has been updated successfully.",
+                    job_details: "Reference Info"
+                },
+                th: {
+                    success_title: "บันทึกข้อมูลสำเร็จ",
+                    update_title: "อัปเดตข้อมูลเรียบร้อย",
+                    success_msg: "ระบบได้ทำการบันทึกข้อมูลของคุณลงในฐานข้อมูลแล้ว",
+                    update_msg: "แก้ไขข้อมูลเดิมในระบบเรียบร้อยแล้ว",
+                    job_details: "รายละเอียดอ้างอิง"
+                }
+            };
+
+            const lang = STATE.lang || 'en';
+            const texts = i18n[lang] || i18n.en;
+
+            titleEl.textContent = texts[titleKey] || texts.success_title;
+            msgEl.textContent = texts[messageKey] || texts.success_msg;
+
+            // Update Details
+            if (jobDetails) {
+                document.getElementById('modalJobId').textContent = jobDetails.id;
+                document.getElementById('modalJobName').textContent = jobDetails.name;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+        }
+
         function saveJob() {
             if (!document.getElementById('jobName').value) {
                 alert("Please enter a Job Name");
@@ -721,9 +866,6 @@
             }
             processData();
 
-            // Inject Current User Name into Data if possible, or just send generic
-            // The original app didn't seem to send User ID, but we can add it if API supports it.
-            // Keeping payload same as original to play safe.
             const data = {
                 jobName: document.getElementById('jobName').value,
                 mode: currentMode,
@@ -735,7 +877,12 @@
             showLoading(true);
             callAPI('saveNewJob', 'POST', data)
                 .then((res) => {
-                    alert(`✅ Saved Successfully\nJob ID: ${res.jobId}\nName: ${data.jobName}`);
+                    // Show Beautiful Modal
+                    showSuccessModal('success_title', 'success_msg', {
+                        id: res.jobId,
+                        name: data.jobName
+                    });
+
                     loadJobList();
                     loadJobDetail(res.jobId);
                 })
@@ -757,7 +904,12 @@
             showLoading(true);
             callAPI('updateJob', 'POST', data)
                 .then((res) => {
-                    alert(`✅ Update Complete\nJob ID: ${currentJobId}`);
+                    // Show Beautiful Modal
+                    showSuccessModal('update_title', 'update_msg', {
+                        id: currentJobId,
+                        name: data.jobName
+                    });
+
                     loadJobList();
                 })
                 .catch(onFailure)
